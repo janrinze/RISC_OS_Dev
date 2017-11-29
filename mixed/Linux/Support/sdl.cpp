@@ -55,13 +55,14 @@
 using std::cerr;
 using std::endl;
 
+#define NUM_SCREENS 3 
 
 #include "protocol.h"
 #include "sdlkey.h"
 
 namespace {
 
-const int refresh_period = 50;
+const int refresh_period = 20;
 const int mode_change = 5555;
 const int screen_update = 5554;
 const size_t screen_size = 1024*1024*100;
@@ -73,7 +74,9 @@ int width = 640;
 int screen_fd = -1;
 int no_updates = 0;
 SDL_Window *window;
-SDL_Surface *screen;
+
+SDL_Surface *screen[NUM_SCREENS];
+static int oldscreennumber=0,screennumber=0,display_size=1;
 
 inline off_t get_file_size(int fd) {
   struct stat s;
@@ -83,8 +86,9 @@ inline off_t get_file_size(int fd) {
 }
 
 void update_screen() {
-  if (no_updates <= 0 && get_file_size(screen_fd) >= (height * width) << log2bpp >> 3 ) {
-    SDL_BlitSurface(screen, nullptr, SDL_GetWindowSurface(window), nullptr);
+  if ((screennumber!=oldscreennumber)||(no_updates <= 0 && get_file_size(screen_fd) >= (height * width) << log2bpp >> 3 )) {
+    oldscreennumber=screennumber;
+    SDL_BlitSurface(screen[screennumber], nullptr, SDL_GetWindowSurface(window), nullptr);
     SDL_UpdateWindowSurface(window);
   }
 }
@@ -195,7 +199,7 @@ int main(int argc, char **argv) {
 
     while (true) {
       command c;
-
+      int numscr;
       char buf[CMSG_SPACE(sizeof(int)) * 2];
 
       struct iovec iov = {
@@ -226,23 +230,42 @@ int main(int argc, char **argv) {
           height = c.mode.vidc[11];
           width = c.mode.vidc[5];
           log2bpp = c.mode.vidc[1];
+          screennumber = 0;
           //cerr << "Set mode " << log2bpp << ' ' << height << ' ' << width << endl;
-          SDL_FreeSurface(screen);
+          for (numscr=0;numscr<NUM_SCREENS;numscr++) 
+              SDL_FreeSurface(screen[numscr]);
           switch (log2bpp) {
             case 3:
-              screen = SDL_CreateRGBSurfaceFrom(pixels, width, height, 8, width, 0, 0, 0, 0);
-              SDL_SetSurfacePalette(screen, palette);
+              display_size = width*height;
+              for (numscr=0;numscr<NUM_SCREENS;numscr++) {
+                screen[numscr] = SDL_CreateRGBSurfaceFrom(pixels + numscr*display_size, width, height, 8, width, 0, 0, 0, 0);
+                SDL_SetSurfacePalette(screen[numscr], palette);
+              }
               break;
             case 4:
-              screen = SDL_CreateRGBSurfaceFrom(pixels, width, height, 16, width * 2,  0x1F, 0x1F << 5, 0x1F << 10, 0);
+              display_size = width*height*2;
+              for (numscr=0;numscr<NUM_SCREENS;numscr++)
+                screen[numscr] = SDL_CreateRGBSurfaceFrom(pixels + numscr*display_size, width, height, 16, width * 2,  0x1F, 0x1F << 5, 0x1F << 10, 0);
               break;
             case 5:
-              screen = SDL_CreateRGBSurfaceFrom(pixels, width, height, 32, width * 4,  0xFF, 0xFF00, 0xFF0000, 0);
+              display_size = width*height*4;
+              for (numscr=0;numscr<NUM_SCREENS;numscr++)
+                screen[numscr] = SDL_CreateRGBSurfaceFrom(pixels + numscr*display_size, width, height, 32, width * 4,  0xFF, 0xFF00, 0xFF0000, 0);
               break;
           }
           SDL_SetWindowSize(window, width, height);
           r.reason = report::ev_mode_sync;
           write(sockets[0], &r.reason, sizeof(r.reason));
+          break;
+        case command::c_activescreen:
+          // swap buffer, the buffer number we compute from the offset.
+          if ( 3 > ( c.activescreen.address/display_size ))
+              screennumber = c.activescreen.address/display_size;
+          break;
+        case command::c_startscreen:
+          // swap buffer, the buffer number we compute from the offset. 
+          if ( 3 > ( c.startscreen.address/display_size )) 
+                            screennumber = c.startscreen.address/display_size;
           break;
         case command::c_suspend:
           no_updates = c.suspend.delay;
@@ -261,7 +284,8 @@ int main(int argc, char **argv) {
           p->colors[c.palette.index].g = 0xFF & (c.palette.colour >> 16);
           p->colors[c.palette.index].b = 0xFF & (c.palette.colour >> 24);
           if (c.palette.type == 2) goto update_cursor;
-          SDL_SetSurfacePalette(screen, palette);
+          for (numscr=0;numscr<NUM_SCREENS;numscr++)
+              SDL_SetSurfacePalette(screen[numscr], palette);
           break;
         }
         case command::c_pointer: {

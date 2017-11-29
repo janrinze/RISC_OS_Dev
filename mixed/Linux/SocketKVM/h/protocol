@@ -54,8 +54,10 @@ union command {
     c_set_palette = CONST(1),
     c_pointer     = CONST(2),
     c_suspend     = CONST(3),
+    c_activescreen = CONST(4),
+    c_startscreen = CONST(5),
   } reason;
-  struct {
+  struct mode {
     int32_t reason;
     ule32 vidc[16];
   } mode;
@@ -73,5 +75,13 @@ union command {
     int32_t reason;
     ule32 delay;
   } suspend;
+  struct activescreen {
+    int32_t reason;
+    ule32 address;
+  } activescreen;
+  struct startscreen {
+    int32_t reason;
+    ule32 address;
+  } startscreen;
   uint8_t pad[33 * 8];
 };
