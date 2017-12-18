@@ -2,6 +2,9 @@ sdl: mixed/Linux/Support/sdl.cpp mixed/Linux/SocketKVM/h/protocol mixed/Linux/Su
 	g++ -Wall -pthread -g -O2 --std=c++11 mixed/Linux/Support/sdl.cpp  `sdl2-config --cflags --libs` -o sdl
 	setfattr -n user.RISC_OS.LoadExec -v 0x00e6ffff00000000 $@ || true
 
+opengl: mixed/Linux/Support/opengl.cpp
+	g++ -pthread -g -O2 --std=c++11 mixed/Linux/Support/opengl.cpp -lGL -lGLU -lglut -o opengl 
+
 mixed/Linux/Support/sdlkey.h: mixed/Linux/Support/sdlkey
 	mixed/Linux/Support/sdlkey > $@
 
