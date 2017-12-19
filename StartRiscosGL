@@ -1,0 +1,14 @@
+#!/bin/bash
+#make -j$(getconf _NPROCESSORS_ONLN) sdl comma2attr HardDisc4/stamp
+
+touch 'HardDisc4/!Boot/Choices/Boot/Tasks/Pinboard'
+sort -u > Pinboard 'HardDisc4/!Boot/Choices/Boot/Tasks/Pinboard' - << END
+X AddTinyDir IXFS::Root.\$.dev.fd.4
+X AddTinyDir IXFS::Root.\$$(echo $HOME | tr ./ /.)
+X AddTinyDir IXFS::Root.\$.dev.fd.8
+X AddTinyDir IXFS::Root.\$$(echo $HOME/Desktop/RO5/hostfs | tr ./ /.)
+END
+setfattr -n user.RISC_OS.LoadExec -v 0x00ebffff00000000 Pinboard
+mv Pinboard 'HardDisc4/!Boot/Choices/Boot/Tasks/Pinboard'
+
+RISC_OS_Alias_IXFSBoot='/IXFS:$.!Boot' exec ./opengl ./run ./RISC_OS --nvram HardDisc4/CMOS > /dev/null
