@@ -168,55 +168,13 @@ static int oldscreennumber=0,screennumber=0,display_size=1;
 int display_width=SCREEN_WIDTH,display_height=SCREEN_HEIGHT;
 static volatile int buttons=0;
 bool shiftkey=false;
-// difficult to process shift click...
-void report_changed_shift_ctrl_alt_key(){
-  static int old_mods;
-  int mods=glutGetModifiers();
-  report r;
-  if (((mods^old_mods)&GLUT_ACTIVE_SHIFT)==GLUT_ACTIVE_SHIFT){
-    if(mods&GLUT_ACTIVE_SHIFT){
-      r.reason = report::ev_keydown;
-      r.key.code = KeyNo_ShiftRight;
-      write(sockets[0], &r, sizeof(r));
-    } else {
-      r.reason = report::ev_keyup;
-      r.key.code = KeyNo_ShiftRight;
-      write(sockets[0], &r, sizeof(r));
-    }
-  }
-  if (((mods^old_mods)&GLUT_ACTIVE_CTRL)==GLUT_ACTIVE_CTRL){
-    if(mods&GLUT_ACTIVE_CTRL){
-      r.reason = report::ev_keydown;
-      r.key.code = KeyNo_CtrlLeft;
-      write(sockets[0], &r, sizeof(r));
-    } else {
-      r.reason = report::ev_keyup;
-      r.key.code = KeyNo_CtrlLeft;
-      write(sockets[0], &r, sizeof(r));
-    }
-  }
-  if (((mods^old_mods)&GLUT_ACTIVE_ALT)==GLUT_ACTIVE_ALT){
-    if(mods&GLUT_ACTIVE_ALT){
-      r.reason = report::ev_keydown;
-      r.key.code = KeyNo_AltLeft;
-      write(sockets[0], &r, sizeof(r));
-    } else {
-      r.reason = report::ev_keyup;
-      r.key.code = KeyNo_AltLeft;
-      write(sockets[0], &r, sizeof(r));
-    }
-  }
-  old_mods=mods;
-}
+
 void OnMouseClick(int button, int state, int x, int y)
 {
   report r;
    x=x*current_screen.w/display_width;
    y=current_screen.h-y*current_screen.h/display_height;
    buttons=button;
-   
-   
-   report_changed_shift_ctrl_alt_key();
      
    switch (state) {
      case GLUT_DOWN:
@@ -232,12 +190,11 @@ void OnMouseClick(int button, int state, int x, int y)
      }
 }
 
-
 void My_mouse_routine(int x, int y){
   report r;
   x=x*current_screen.w/display_width;
   y=current_screen.h-y*current_screen.h/display_height;
-  report_changed_shift_ctrl_alt_key();
+
   r.reason = report::ev_mouse;
   r.mouse.x = x;
   r.mouse.y = y;
@@ -256,21 +213,19 @@ void mouseWheel(int button, int dir, int x, int y)
     {
         // Zoom out
     }
-
     return;
 }
-
 
 void myupfunc(unsigned char key, int x, int y){
     report r;
     r.reason = report::ev_keyup;
     r.key.code = keycode[key];
     write(sockets[0], &r, sizeof(r));    
-    report_changed_shift_ctrl_alt_key();
+
 }
 void mydownfunc(unsigned char key, int x, int y){
     report r;
-    report_changed_shift_ctrl_alt_key();
+
     r.reason = report::ev_keydown;
     r.reason = report::ev_keydown;
     r.key.code = keycode[key];
@@ -302,6 +257,13 @@ unsigned short special_to_code(int key) {
     case GLUT_KEY_HOME:       return KeyNo_Home;// Home directional key.
     case GLUT_KEY_END:        return KeyNo_Break;// End directional key.
     case GLUT_KEY_INSERT:     return KeyNo_Insert; //Inset directional key.
+    case 112:                 return KeyNo_ShiftLeft;
+    case 113:                 return KeyNo_ShiftRight;
+    case 114:                 return KeyNo_CtrlLeft;
+    case 115:                 return KeyNo_CtrlRight;
+    case 116:                 return KeyNo_AltLeft;
+    case 117:                 return KeyNo_AltRight;
+     
     default:
       break;
   }
@@ -311,22 +273,24 @@ unsigned short special_to_code(int key) {
 void myspecialup(int key, int x, int y)
 {
   report r;
-  report_changed_shift_ctrl_alt_key();
   r.reason = report::ev_keyup;
   r.key.code = special_to_code(key);
   if (r.key.code!=0)
     write(sockets[0], &r, sizeof(r));
-    
+  else
+    cerr << " KEYup " << key <<"\n";
+
 }
 void myspecialdown(int key, int x, int y)
 {
   report r;
-  report_changed_shift_ctrl_alt_key();
+
   r.reason = report::ev_keydown;
   r.key.code = special_to_code(key);
   if (r.key.code!=0)
     write(sockets[0], &r, sizeof(r));
-    
+  else
+    cerr << " KEYdown " << key <<"\n";
 }
 
 // Setup Texture
